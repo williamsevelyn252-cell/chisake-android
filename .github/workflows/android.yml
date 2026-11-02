@@ -1,1 +1,53 @@
+name: Build CHISAKE Android APK
 
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'CHISAKE_Android_Starter.zip'
+      - '.github/workflows/android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Extract CHISAKE source
+        run: |
+          mkdir app
+          unzip -o CHISAKE_Android_Starter.zip -d app
+
+      - name: Generate Android project
+        working-directory: app
+        run: |
+          flutter create --platforms=android --org com.chisake --project-name social .
+          sed -i 's/android:label="social"/android:label="CHISAKE"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 26/' android/app/build.gradle.kts
+
+      - name: Install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: app
+        run: flutter build apk --release
+
+      - name: Upload CHISAKE APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CHISAKE-Android-APK
+          path: app/build/app/outputs/flutter-apk/app-release.apk
